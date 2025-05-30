@@ -10,14 +10,15 @@ pipeline {
         BUILD_DOCKER = 'true'
         DOCKER_REGISTRY = 'docker.io'
         DOCKER_HUB_USERNAME = 'your-dockerhub-username'  // Replace with your username
-        IMAGE_NAME = "${DOCKER_HUB_USERNAME}/react-pipeline-app"
+        IMAGE_NAME = "${DOCKER_HUB_USERNAME}/my-jenkins-pipeline-app"
         IMAGE_TAG = "${BUILD_NUMBER}"
+        APP_NAME = 'my-jenkins-pipeline-app'
     }
     
     stages {
         stage('Checkout') {
             steps {
-                echo '🚀 Starting Pipeline...'
+                echo '🚀 Starting Pipeline for my-jenkins-pipeline-app...'
                 echo 'Checking out code...'
                 checkout scm
                 script {
@@ -35,6 +36,7 @@ pipeline {
                         env.GIT_BRANCH = env.BRANCH_NAME ?: 'unknown'
                     }
                 }
+                echo "📂 Application: ${APP_NAME}"
                 echo "📂 Branch: ${env.GIT_BRANCH}"
                 echo "📝 Commit: ${env.GIT_COMMIT?.take(8)}"
             }
@@ -44,6 +46,7 @@ pipeline {
             steps {
                 echo '🔍 Environment Information:'
                 sh '''
+                    echo "Application: my-jenkins-pipeline-app"
                     echo "Node.js version: $(node --version)"
                     echo "npm version: $(npm --version)"
                     echo "Working directory: $(pwd)"
@@ -55,15 +58,17 @@ pipeline {
         
         stage('Install Dependencies') {
             steps {
-                echo '📦 Installing dependencies...'
+                echo '📦 Installing dependencies for my-jenkins-pipeline-app...'
                 sh '''
                     # Clean npm cache
                     npm cache clean --force
                     
-                    # Install dependencies
+                    # Install dependencies with optimized settings
                     npm ci --prefer-offline --no-audit
                     
                     echo "✅ Dependencies installed successfully"
+                    echo "📊 Dependency summary:"
+                    npm list --depth=0
                 '''
             }
         }
@@ -72,7 +77,7 @@ pipeline {
             parallel {
                 stage('Lint') {
                     steps {
-                        echo '🔍 Running ESLint...'
+                        echo '🔍 Running ESLint on my-jenkins-pipeline-app...'
                         sh '''
                             npm run lint || echo "⚠️ Linting completed with warnings"
                         '''
@@ -80,7 +85,7 @@ pipeline {
                 }
                 stage('Security Audit') {
                     steps {
-                        echo '🔒 Running security audit...'
+                        echo '🔒 Running security audit on my-jenkins-pipeline-app...'
                         sh '''
                             npm audit --audit-level=high || echo "⚠️ Security audit completed"
                         '''
@@ -91,11 +96,17 @@ pipeline {
         
         stage('Test') {
             steps {
-                echo '🧪 Running tests...'
+                echo '🧪 Running tests for my-jenkins-pipeline-app...'
                 sh '''
                     echo "Running React tests with coverage..."
                     npm run test:ci
                     echo "✅ Tests completed successfully"
+                    
+                    # Display coverage summary
+                    if [ -f coverage/lcov.info ]; then
+                        echo "📊 Coverage Summary:"
+                        grep -E "(LF|SF|end_of_record)" coverage/lcov.info | wc -l
+                    fi
                 '''
             }
             post {
@@ -107,7 +118,7 @@ pipeline {
                         keepAll: true,
                         reportDir: 'coverage/lcov-report',
                         reportFiles: 'index.html',
-                        reportName: 'Coverage Report'
+                        reportName: 'my-jenkins-pipeline-app Coverage Report'
                     ])
                 }
             }
@@ -115,15 +126,25 @@ pipeline {
         
         stage('Build Application') {
             steps {
-                echo '🏗️ Building React application...'
+                echo '🏗️ Building my-jenkins-pipeline-app...'
                 sh '''
                     echo "Creating production build..."
+                    
+                    # Set build-time environment variables
+                    export REACT_APP_VERSION="1.0.${BUILD_NUMBER}"
+                    export REACT_APP_BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+                    export REACT_APP_GIT_COMMIT="${GIT_COMMIT}"
+                    
                     npm run build
                     
                     echo "✅ Build completed successfully"
-                    echo "📊 Build stats:"
+                    echo "📊 Build stats for my-jenkins-pipeline-app:"
                     ls -la build/
                     du -sh build/
+                    
+                    # Verify critical files exist
+                    [ -f build/index.html ] && echo "✅ index.html found"
+                    [ -d build/static ] && echo "✅ static assets found"
                 '''
             }
             post {
@@ -138,7 +159,7 @@ pipeline {
                 environment name: 'BUILD_DOCKER', value: 'true'
             }
             steps {
-                echo '🐳 Building Docker image...'
+                echo '🐳 Building Docker image for my-jenkins-pipeline-app...'
                 script {
                     // Build the Docker image
                     def image = docker.build("${IMAGE_NAME}:${IMAGE_TAG}")
@@ -148,6 +169,9 @@ pipeline {
                     
                     echo "✅ Docker image built successfully"
                     echo "🏷️ Image tags: ${IMAGE_NAME}:${IMAGE_TAG}, ${IMAGE_NAME}:latest"
+                    
+                    // Display image info
+                    sh "docker images ${IMAGE_NAME}"
                 }
             }
         }
@@ -157,7 +181,7 @@ pipeline {
                 environment name: 'BUILD_DOCKER', value: 'true'
             }
             steps {
-                echo '🚀 Pushing image to Docker Hub...'
+                echo '🚀 Pushing my-jenkins-pipeline-app image to Docker Hub...'
                 script {
                     docker.withRegistry('https://registry-1.docker.io/v2/', 'dockerhub-credentials') {
                         // Push both tagged and latest versions
@@ -166,7 +190,8 @@ pipeline {
                         image.push('latest')
                     }
                 }
-                echo "✅ Image pushed successfully to Docker Hub"
+                echo "✅ my-jenkins-pipeline-app image pushed successfully to Docker Hub"
+                echo "📦 Available at: https://hub.docker.com/r/${DOCKER_HUB_USERNAME}/my-jenkins-pipeline-app"
             }
             post {
                 always {
@@ -187,11 +212,13 @@ pipeline {
                         not { branch 'main' }
                     }
                     steps {
-                        echo '🚧 Deploying to Development Environment...'
+                        echo '🚧 Deploying my-jenkins-pipeline-app to Development Environment...'
                         sh '''
                             echo "🔧 Development deployment simulation"
+                            echo "📦 Application: my-jenkins-pipeline-app"
                             echo "📦 Image: ${IMAGE_NAME}:${IMAGE_TAG}"
                             echo "🌍 Environment: Development"
+                            echo "🔗 URL: http://dev-my-jenkins-pipeline-app.example.com"
                             echo "✅ Development deployment completed"
                         '''
                     }
@@ -201,11 +228,13 @@ pipeline {
                         branch 'main'
                     }
                     steps {
-                        echo '🎯 Deploying to Production Environment...'
+                        echo '🎯 Deploying my-jenkins-pipeline-app to Production Environment...'
                         sh '''
                             echo "🚀 Production deployment simulation"
+                            echo "📦 Application: my-jenkins-pipeline-app"
                             echo "📦 Image: ${IMAGE_NAME}:${IMAGE_TAG}"
                             echo "🌍 Environment: Production"
+                            echo "🔗 URL: https://my-jenkins-pipeline-app.example.com"
                             echo "✅ Production deployment completed"
                         '''
                     }
@@ -215,10 +244,11 @@ pipeline {
         
         stage('Post-Deploy Tests') {
             steps {
-                echo '🔍 Running post-deployment tests...'
+                echo '🔍 Running post-deployment tests for my-jenkins-pipeline-app...'
                 sh '''
-                    echo "🏥 Health check simulation"
+                    echo "🏥 Health check simulation for my-jenkins-pipeline-app"
                     echo "📊 Performance test simulation"
+                    echo "🔒 Security scan simulation"
                     echo "✅ Post-deployment tests passed"
                 '''
             }
@@ -232,21 +262,22 @@ pipeline {
         }
         success {
             echo '''
-            🎉 Pipeline completed successfully! 
+            🎉 Pipeline completed successfully for my-jenkins-pipeline-app! 
             ✅ All stages passed
-            📦 Application built and deployed
+            📦 Application built and tested
             🐳 Docker image available on Docker Hub
+            🚀 Ready for deployment
             '''
         }
         failure {
             echo '''
-            🚨 Pipeline failed! 
+            🚨 Pipeline failed for my-jenkins-pipeline-app! 
             ❌ Check the logs above for details
             🔧 Fix the issues and retry
             '''
         }
         unstable {
-            echo '⚠️ Pipeline completed with warnings'
+            echo '⚠️ Pipeline completed with warnings for my-jenkins-pipeline-app'
         }
     }
 }
