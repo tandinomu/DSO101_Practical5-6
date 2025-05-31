@@ -2,7 +2,7 @@ pipeline {
     agent any
     
     tools {
-        nodejs 'NodeJS-24.0.2'  // Make sure this matches your Jenkins NodeJS configuration
+        nodejs 'NodeJS 24.0.2'  // Updated to match your Jenkins configuration
     }
     
     environment {
