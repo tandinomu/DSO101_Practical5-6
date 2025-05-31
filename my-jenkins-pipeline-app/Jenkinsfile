@@ -18,7 +18,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                echo '🚀 Starting Pipeline for my-jenkins-pipeline-app...'
+                echo 'Starting Pipeline for my-jenkins-pipeline-app...'
                 echo 'Checking out code...'
                 checkout scm
                 script {
@@ -36,15 +36,15 @@ pipeline {
                         env.GIT_BRANCH = env.BRANCH_NAME ?: 'unknown'
                     }
                 }
-                echo "📂 Application: ${APP_NAME}"
-                echo "📂 Branch: ${env.GIT_BRANCH}"
-                echo "📝 Commit: ${env.GIT_COMMIT?.take(8)}"
+                echo "Application: ${APP_NAME}"
+                echo " Branch: ${env.GIT_BRANCH}"
+                echo "Commit: ${env.GIT_COMMIT?.take(8)}"
             }
         }
         
         stage('Environment Info') {
             steps {
-                echo '🔍 Environment Information:'
+                echo ' Environment Information:'
                 sh '''
                     echo "Application: my-jenkins-pipeline-app"
                     echo "Node.js version: $(node --version)"
@@ -58,7 +58,7 @@ pipeline {
         
         stage('Install Dependencies') {
             steps {
-                echo '📦 Installing dependencies for my-jenkins-pipeline-app...'
+                echo ' Installing dependencies for my-jenkins-pipeline-app...'
                 sh '''
                     # Clean npm cache
                     npm cache clean --force
@@ -66,8 +66,8 @@ pipeline {
                     # Install dependencies with optimized settings
                     npm ci --prefer-offline --no-audit
                     
-                    echo "✅ Dependencies installed successfully"
-                    echo "📊 Dependency summary:"
+                    echo " Dependencies installed successfully"
+                    echo "Dependency summary:"
                     npm list --depth=0
                 '''
             }
@@ -77,9 +77,9 @@ pipeline {
             parallel {
                 stage('Lint') {
                     steps {
-                        echo '🔍 Running ESLint on my-jenkins-pipeline-app...'
+                        echo ' Running ESLint on my-jenkins-pipeline-app...'
                         sh '''
-                            npm run lint || echo "⚠️ Linting completed with warnings"
+                            npm run lint || echo "Linting completed with warnings"
                         '''
                     }
                 }
@@ -87,7 +87,7 @@ pipeline {
                     steps {
                         echo '🔒 Running security audit on my-jenkins-pipeline-app...'
                         sh '''
-                            npm audit --audit-level=high || echo "⚠️ Security audit completed"
+                            npm audit --audit-level=high || echo "Security audit completed"
                         '''
                     }
                 }
@@ -96,15 +96,15 @@ pipeline {
         
         stage('Test') {
             steps {
-                echo '🧪 Running tests for my-jenkins-pipeline-app...'
+                echo 'Running tests for my-jenkins-pipeline-app...'
                 sh '''
                     echo "Running React tests with coverage..."
                     npm run test:ci
-                    echo "✅ Tests completed successfully"
+                    echo " Tests completed successfully"
                     
                     # Display coverage summary
                     if [ -f coverage/lcov.info ]; then
-                        echo "📊 Coverage Summary:"
+                        echo "Coverage Summary:"
                         grep -E "(LF|SF|end_of_record)" coverage/lcov.info | wc -l
                     fi
                 '''

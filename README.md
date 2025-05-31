@@ -12,6 +12,7 @@ This project demonstrates modern DevOps practices by implementing a complete CI/
 - Provides secure credential management and deployment strategies
 - Follows industry best practices for continuous integration and deployment
 
+# Part 1: Guided Exercise
 
 ## Prerequisites
 
@@ -29,29 +30,42 @@ Basic familiarity with Jenkins and npm/yarn commands
 
 ## Installation & Setup
 
-### Phase 1: Environment Setup
+### Step 1: Environment Setup
 
 #### 1. Create React Application
 
 ![reactapp](./Assets/reactapp.png)
 
-### Phase 2: Jenkins Configuration
+### Step 2: Jenkins Configuration
 
-#### 3. Install Jenkins Plugins
+#### 1. Install Jenkins Plugins
 1. Navigate to **Manage Jenkins** → **Manage Plugins** → **Available**
 2. Install required plugins listed in prerequisites
-3. Restart Jenkins after installation
 
-#### 4. Configure Global Tools
+#### 2. Configure Global Tools
 1. Go to **Manage Jenkins** → **Global Tool Configuration**
 2. Configure Node.js:
    - Name: `NodeJS 24.0.2`
-   - Version: Latest stable (20.x or 24.x)
-   - ✅ Install automatically
-3. Configure Docker (if needed)
-4. Save configuration
 
-### Phase 3: Docker Setup
+   ![nodejs](./Assets/nodejs.png)
+
+#### 3. Created a New Pipeline Job
+
+![job](./Assets/job.png)
+
+Under Pipeline, select:
+
+Definition: Pipeline script from SCM
+SCM: Git → Provided repository URL
+Script Path: Jenkinsfile
+
+![configure](./Assets/configuration.png)
+
+#### 4. Define the Pipeline in Jenkinsfile
+
+![enkinsfile](./Assets/jenkinsfile.png)
+
+### Part 2: Docker Setup(Challenge)
 
 #### 5. Create Dockerfile
 ```dockerfile
@@ -111,54 +125,54 @@ Create a `Jenkinsfile` in your project root with the complete pipeline configura
    - Repository URL: Your GitHub repository
    - Script Path: `Jenkinsfile`
 
-## 🔄 Pipeline Stages
+## Pipeline Stages
 
-### 1. **Checkout** 📥
+### 1. **Checkout** 
 - Retrieves source code from Git repository
 - Extracts branch and commit information
 - Sets up workspace environment
 
-### 2. **Environment Info** 🔍
+### 2. **Environment Info** 
 - Displays Node.js and npm versions
 - Shows system information
 - Validates environment setup
 
-### 3. **Install Dependencies** 📦
+### 3. **Install Dependencies** 
 - Cleans npm cache
 - Installs project dependencies using `npm ci`
 - Ensures reproducible builds
 
-### 4. **Code Quality Checks** 🔍
+### 4. **Code Quality Checks** 
 - **Lint**: ESLint code quality analysis
 - **Security Audit**: npm security vulnerability scan
 - Runs in parallel for efficiency
 
-### 5. **Test** 🧪
+### 5. **Test** 
 - Executes test suite with coverage
 - Generates coverage reports
 - Publishes HTML coverage reports
 
-### 6. **Build Application** 🏗️
+### 6. **Build Application** 
 - Creates production React build
 - Archives build artifacts
 - Validates build integrity
 
-### 7. **Build Docker Image** 🐳
+### 7. **Build Docker Image** 
 - Creates optimized Docker image
 - Tags with build number and latest
 - Uses multi-stage build for size optimization
 
-### 8. **Push to Docker Hub** 🚀
+### 8. **Push to Docker Hub** 
 - Authenticates with Docker Hub
 - Pushes tagged images to registry
 - Cleans up local Docker images
 
-### 9. **Deploy** 🎯
+### 9. **Deploy** 
 - **Development**: Deploys feature branches to dev environment
 - **Production**: Deploys main branch to production
 - Runs in parallel based on branch conditions
 
-### 10. **Post-Deploy Tests** ✅
+### 10. **Post-Deploy Tests** 
 - Health checks simulation
 - Performance testing validation
 - Deployment verification
