@@ -2,282 +2,115 @@ pipeline {
     agent any
     
     tools {
-        nodejs 'NodeJS 24.0.2'  // Must match the name in Global Tool Configuration
-    }
+        nodejs 'NodeJS-24.0.2'  
     
     environment {
         CI = 'true'
-        BUILD_DOCKER = 'true'
-        DOCKER_REGISTRY = 'docker.io'
-        DOCKER_HUB_USERNAME = 'your-dockerhub-username'  // Replace with your username
-        IMAGE_NAME = "${DOCKER_HUB_USERNAME}/my-jenkins-pipeline-app"
-        IMAGE_TAG = "${BUILD_NUMBER}"
-        APP_NAME = 'my-jenkins-pipeline-app'
+        NODE_ENV = 'test'
     }
     
     stages {
         stage('Checkout') {
             steps {
-                echo 'Starting Pipeline for my-jenkins-pipeline-app...'
                 echo 'Checking out code...'
                 checkout scm
-                script {
-                    // Get Git information
-                    env.GIT_COMMIT = sh(
-                        script: 'git rev-parse HEAD',
-                        returnStdout: true
-                    ).trim()
-                    try {
-                        env.GIT_BRANCH = sh(
-                            script: 'git rev-parse --abbrev-ref HEAD',
-                            returnStdout: true
-                        ).trim()
-                    } catch (Exception e) {
-                        env.GIT_BRANCH = env.BRANCH_NAME ?: 'unknown'
-                    }
-                }
-                echo "Application: ${APP_NAME}"
-                echo " Branch: ${env.GIT_BRANCH}"
-                echo "Commit: ${env.GIT_COMMIT?.take(8)}"
-            }
-        }
-        
-        stage('Environment Info') {
-            steps {
-                echo ' Environment Information:'
-                sh '''
-                    echo "Application: my-jenkins-pipeline-app"
-                    echo "Node.js version: $(node --version)"
-                    echo "npm version: $(npm --version)"
-                    echo "Working directory: $(pwd)"
-                    echo "Available disk space:"
-                    df -h
-                '''
             }
         }
         
         stage('Install Dependencies') {
             steps {
-                echo ' Installing dependencies for my-jenkins-pipeline-app...'
-                sh '''
-                    # Clean npm cache
-                    npm cache clean --force
-                    
-                    # Install dependencies with optimized settings
-                    npm ci --prefer-offline --no-audit
-                    
-                    echo " Dependencies installed successfully"
-                    echo "Dependency summary:"
-                    npm list --depth=0
-                '''
+                echo 'Installing npm dependencies...'
+                sh 'npm ci'  
             }
         }
         
-        stage('Code Quality Checks') {
-            parallel {
-                stage('Lint') {
-                    steps {
-                        echo ' Running ESLint on my-jenkins-pipeline-app...'
-                        sh '''
-                            npm run lint || echo "Linting completed with warnings"
-                        '''
-                    }
-                }
-                stage('Security Audit') {
-                    steps {
-                        echo '🔒 Running security audit on my-jenkins-pipeline-app...'
-                        sh '''
-                            npm audit --audit-level=high || echo "Security audit completed"
-                        '''
-                    }
-                }
-            }
-        }
-        
-        stage('Test') {
+        stage('Lint Code') {
             steps {
-                echo 'Running tests for my-jenkins-pipeline-app...'
-                sh '''
-                    echo "Running React tests with coverage..."
-                    npm run test:ci
-                    echo " Tests completed successfully"
-                    
-                    # Display coverage summary
-                    if [ -f coverage/lcov.info ]; then
-                        echo "Coverage Summary:"
-                        grep -E "(LF|SF|end_of_record)" coverage/lcov.info | wc -l
-                    fi
-                '''
-            }
-            post {
-                always {
-                    // Archive test coverage reports
-                    publishHTML([
-                        allowMissing: false,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true,
-                        reportDir: 'coverage/lcov-report',
-                        reportFiles: 'index.html',
-                        reportName: 'my-jenkins-pipeline-app Coverage Report'
-                    ])
-                }
+                echo 'Running linting...'
+                sh 'npm run lint || echo "Linting completed with warnings"'
             }
         }
         
         stage('Build Application') {
             steps {
-                echo '🏗️ Building my-jenkins-pipeline-app...'
-                sh '''
-                    echo "Creating production build..."
-                    
-                    # Set build-time environment variables
-                    export REACT_APP_VERSION="1.0.${BUILD_NUMBER}"
-                    export REACT_APP_BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-                    export REACT_APP_GIT_COMMIT="${GIT_COMMIT}"
-                    
-                    npm run build
-                    
-                    echo "✅ Build completed successfully"
-                    echo "📊 Build stats for my-jenkins-pipeline-app:"
-                    ls -la build/
-                    du -sh build/
-                    
-                    # Verify critical files exist
-                    [ -f build/index.html ] && echo "✅ index.html found"
-                    [ -d build/static ] && echo "✅ static assets found"
-                '''
-            }
-            post {
-                success {
-                    archiveArtifacts artifacts: 'build/**/*', fingerprint: true
-                }
-            }
-        }
-        
-        stage('Build Docker Image') {
-            when {
-                environment name: 'BUILD_DOCKER', value: 'true'
-            }
-            steps {
-                echo '🐳 Building Docker image for my-jenkins-pipeline-app...'
+                echo 'Building application...'
                 script {
-                    // Build the Docker image
-                    def image = docker.build("${IMAGE_NAME}:${IMAGE_TAG}")
-                    
-                    // Tag as latest
-                    sh "docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest"
-                    
-                    echo "✅ Docker image built successfully"
-                    echo "🏷️ Image tags: ${IMAGE_NAME}:${IMAGE_TAG}, ${IMAGE_NAME}:latest"
-                    
-                    // Display image info
-                    sh "docker images ${IMAGE_NAME}"
-                }
-            }
-        }
-        
-        stage('Push to Docker Hub') {
-            when {
-                environment name: 'BUILD_DOCKER', value: 'true'
-            }
-            steps {
-                echo '🚀 Pushing my-jenkins-pipeline-app image to Docker Hub...'
-                script {
-                    docker.withRegistry('https://registry-1.docker.io/v2/', 'dockerhub-credentials') {
-                        // Push both tagged and latest versions
-                        def image = docker.image("${IMAGE_NAME}:${IMAGE_TAG}")
-                        image.push()
-                        image.push('latest')
+                    // Check if build script exists
+                    def packageJson = readJSON file: 'package.json'
+                    if (packageJson.scripts?.build) {
+                        sh 'npm run build'
+                    } else {
+                        echo 'No build script found, skipping build stage'
                     }
                 }
-                echo "✅ my-jenkins-pipeline-app image pushed successfully to Docker Hub"
-                echo "📦 Available at: https://hub.docker.com/r/${DOCKER_HUB_USERNAME}/my-jenkins-pipeline-app"
+            }
+        }
+        
+        stage('Run Tests') {
+            steps {
+                echo 'Running tests...'
+                sh 'npm test'
             }
             post {
                 always {
-                    // Clean up local Docker images to save space
-                    sh '''
-                        echo "🧹 Cleaning up Docker images..."
-                        docker image prune -f --filter "dangling=true"
-                        echo "✅ Docker cleanup completed"
-                    '''
+                    // Publish test results if using jest with junit reporter
+                    script {
+                        if (fileExists('junit.xml')) {
+                            junit 'junit.xml'
+                        }
+                        if (fileExists('coverage/lcov.info')) {
+                            publishHTML([
+                                allowMissing: false,
+                                alwaysLinkToLastBuild: true,
+                                keepAll: true,
+                                reportDir: 'coverage',
+                                reportFiles: 'index.html',
+                                reportName: 'Coverage Report'
+                            ])
+                        }
+                    }
                 }
             }
         }
         
         stage('Deploy') {
-            parallel {
-                stage('Development Deploy') {
-                    when {
-                        not { branch 'main' }
-                    }
-                    steps {
-                        echo '🚧 Deploying my-jenkins-pipeline-app to Development Environment...'
-                        sh '''
-                            echo "🔧 Development deployment simulation"
-                            echo "📦 Application: my-jenkins-pipeline-app"
-                            echo "📦 Image: ${IMAGE_NAME}:${IMAGE_TAG}"
-                            echo "🌍 Environment: Development"
-                            echo "🔗 URL: http://dev-my-jenkins-pipeline-app.example.com"
-                            echo "✅ Development deployment completed"
-                        '''
-                    }
-                }
-                stage('Production Deploy') {
-                    when {
-                        branch 'main'
-                    }
-                    steps {
-                        echo '🎯 Deploying my-jenkins-pipeline-app to Production Environment...'
-                        sh '''
-                            echo "🚀 Production deployment simulation"
-                            echo "📦 Application: my-jenkins-pipeline-app"
-                            echo "📦 Image: ${IMAGE_NAME}:${IMAGE_TAG}"
-                            echo "🌍 Environment: Production"
-                            echo "🔗 URL: https://my-jenkins-pipeline-app.example.com"
-                            echo "✅ Production deployment completed"
-                        '''
-                    }
-                }
-            }
-        }
-        
-        stage('Post-Deploy Tests') {
             steps {
-                echo '🔍 Running post-deployment tests for my-jenkins-pipeline-app...'
-                sh '''
-                    echo "🏥 Health check simulation for my-jenkins-pipeline-app"
-                    echo "📊 Performance test simulation"
-                    echo "🔒 Security scan simulation"
-                    echo "✅ Post-deployment tests passed"
-                '''
+                script {
+                    echo "Deploying to environment based on branch: ${env.BRANCH_NAME}"
+                    
+                    if (env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'master') {
+                        echo 'Deploying to production...'
+                        // Add your production deployment commands here
+                        sh '''
+                            echo "Production deployment would happen here"
+                            # npm run deploy:prod
+                        '''
+                    } else if (env.BRANCH_NAME == 'develop') {
+                        echo 'Deploying to staging...'
+                        sh '''
+                            echo "Staging deployment would happen here"
+                            # npm run deploy:stage
+                        '''
+                    } else {
+                        echo 'Feature branch detected, skipping deployment'
+                    }
+                }
             }
         }
     }
     
     post {
         always {
-            echo '🧹 Cleaning up workspace...'
-            cleanWs()
+            echo 'Pipeline execution completed'
+            cleanWs()  // Clean workspace after build
         }
         success {
-            echo '''
-            🎉 Pipeline completed successfully for my-jenkins-pipeline-app! 
-            ✅ All stages passed
-            📦 Application built and tested
-            🐳 Docker image available on Docker Hub
-            🚀 Ready for deployment
-            '''
+            echo 'Pipeline succeeded!'
+            // You can add notifications here (email, Slack, etc.)
         }
         failure {
-            echo '''
-            🚨 Pipeline failed for my-jenkins-pipeline-app! 
-            ❌ Check the logs above for details
-            🔧 Fix the issues and retry
-            '''
-        }
-        unstable {
-            echo '⚠️ Pipeline completed with warnings for my-jenkins-pipeline-app'
+            echo 'Pipeline failed!'
+            // Add failure notifications here
         }
     }
 }
